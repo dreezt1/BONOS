@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import os
+import git
+from datetime import datetime
 
 # Configurar la página para que ocupe toda la pantalla horizontal
 st.set_page_config(layout="wide")
@@ -51,6 +53,9 @@ def procesar_archivo(archivo, ano, mes, casino):
     file_path = f'{folder_path}/{ano}_{mes}_{casino}.csv'
     df.to_csv(file_path, index=False)
     
+    # Subir el archivo a GitHub
+    subir_a_github(file_path)
+    
     return df
 
 def calcular_bono(row):
@@ -69,6 +74,18 @@ def calcular_bono(row):
     except Exception as e:
         st.error(f"Error en fila {row.name}: {e}")
         return 0  # Retornar 0 en caso de error
+
+# Función para subir archivos a GitHub
+def subir_a_github(file_path):
+    try:
+        repo = git.Repo(os.getcwd())
+        repo.index.add([file_path])
+        repo.index.commit(f"Subiendo archivo {os.path.basename(file_path)} el {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        origin = repo.remote(name='origin')
+        origin.push()
+        st.success(f'Archivo {os.path.basename(file_path)} subido a GitHub exitosamente.')
+    except Exception as e:
+        st.error(f"Error al subir el archivo a GitHub: {e}")
 
 # Pantalla inicial con menú de opciones
 st.title('Sistema de Gestión de Bonos')
@@ -131,4 +148,3 @@ elif opcion == 'Ver Bonos Procesados':
                 st.warning('No se encontraron bonos procesados para mostrar.')
         else:
             st.warning(f'No se encontró el archivo {file_path}. Sube un archivo primero.')
-

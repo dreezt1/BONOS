@@ -81,7 +81,10 @@ def subir_a_github(file_path):
         repo = git.Repo(os.getcwd())
         repo.index.add([file_path])
         repo.index.commit(f"Subiendo archivo {os.path.basename(file_path)} el {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Use your personal access token (PAT) instead of the username and password
         origin = repo.remote(name='origin')
+        origin.set_url(f"https://dreezt1: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@github.com/dreezt1/BONOS.git")
         origin.push()
         st.success(f'Archivo {os.path.basename(file_path)} subido a GitHub exitosamente.')
     except Exception as e:

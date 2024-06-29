@@ -41,7 +41,7 @@ def procesar_archivo(archivo, ano, mes, casino):
     file_path = os.path.join(folder_path, f'{ano}_{mes}_{casino}.csv')
     df.to_csv(file_path, index=False)
     
-    return df
+    return df, file_path
 
 def calcular_bono(row):
     try:
@@ -80,9 +80,12 @@ if opcion == 'Cargar Archivo':
             archivo = st.file_uploader(f"Cargar archivo Excel para {mes_subir} {ano_subir} - {casino_subir}", type=['xlsx'])
 
             if archivo is not None:
-                bonos_df = procesar_archivo(archivo, ano_subir, mes_subir, casino_subir)
+                bonos_df, file_path = procesar_archivo(archivo, ano_subir, mes_subir, casino_subir)
                 if bonos_df is not None and 'Bono' in bonos_df.columns:  # Ensure 'Bono' column exists
                     st.success(f'Archivo para {mes_subir} {ano_subir} - {casino_subir} procesado exitosamente.')
+                    st.write(f'Archivo guardado en: {file_path}')
+                    with open(file_path, 'rb') as f:
+                        st.download_button('Descargar archivo procesado', f, file_name=os.path.basename(file_path))
 
         elif submenu == 'Administrar Archivos':
             st.subheader('Administrar Archivos Cargados')
@@ -121,3 +124,6 @@ elif opcion == 'Ver Bonos Procesados':
                 st.warning('No se encontraron bonos procesados para mostrar.')
         else:
             st.warning(f'No se encontró el archivo {file_path}. Sube un archivo primero.')
+
+# Agregar control de versiones en la esquina inferior derecha
+st.sidebar.markdown("**Versión: v1.0**")

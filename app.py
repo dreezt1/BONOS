@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import os
-from io import BytesIO
 
 # Configurar la página para que ocupe toda la pantalla horizontal
 st.set_page_config(layout="wide")
@@ -25,9 +24,19 @@ if not os.path.exists(folder_path):
 def procesar_archivo(archivo, ano, mes, casino):
     try:
         df = pd.read_excel(archivo, header=6, names=column_names)
+    except FileNotFoundError:
+        st.error("El archivo no se encontró.")
+        return None
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
-        return None, None
+        return None
+    
+    # Verificar si las columnas esperadas están presentes en el DataFrame
+    missing_columns = [col for col in column_names if col not in df.columns]
+    if missing_columns:
+        st.error(f"Las siguientes columnas faltan en el archivo: {', '.join(missing_columns)}")
+        st.write("Columnas disponibles en el archivo:", df.columns.tolist())
+        return None
 
     # Filtrar y calcular el bono para cada fila
     cliente_no_deseado = ['ROYAL', 'MNACO', 'FRON', 'MHTAN']
@@ -39,10 +48,10 @@ def procesar_archivo(archivo, ano, mes, casino):
     df = df[df['Billete'] > 20000]  
     
     # Guardar el DataFrame procesado como archivo CSV
-    file_path = os.path.join(folder_path, f'{ano}_{mes}_{casino}.csv')
+    file_path = f'{folder_path}/{ano}_{mes}_{casino}.csv'
     df.to_csv(file_path, index=False)
     
-    return df, file_path
+    return df
 
 def calcular_bono(row):
     try:
@@ -81,14 +90,9 @@ if opcion == 'Cargar Archivo':
             archivo = st.file_uploader(f"Cargar archivo Excel para {mes_subir} {ano_subir} - {casino_subir}", type=['xlsx'])
 
             if archivo is not None:
-                bonos_df, file_path = procesar_archivo(archivo, ano_subir, mes_subir, casino_subir)
+                bonos_df = procesar_archivo(archivo, ano_subir, mes_subir, casino_subir)
                 if bonos_df is not None and 'Bono' in bonos_df.columns:  # Ensure 'Bono' column exists
                     st.success(f'Archivo para {mes_subir} {ano_subir} - {casino_subir} procesado exitosamente.')
-                    st.write(f'Archivo guardado en: {file_path}')
-                    
-                    # Proporcionar enlace de descarga del archivo procesado
-                    with open(file_path, 'rb') as f:
-                        st.download_button('Descargar archivo procesado', f, file_name=os.path.basename(file_path))
 
         elif submenu == 'Administrar Archivos':
             st.subheader('Administrar Archivos Cargados')
@@ -110,7 +114,7 @@ elif opcion == 'Ver Bonos Procesados':
     ver_casino = st.selectbox('Seleccione el casino (Ver)', ['MANHATTAN', 'FARAON', 'ROYAL', 'MONACO'], key='ver_casino')
 
     if st.button('Ver Bonos'):
-        file_path = os.path.join(folder_path, f'{ver_ano}_{ver_mes}_{ver_casino}.csv')
+        file_path = f'{folder_path}/{ver_ano}_{ver_mes}_{ver_casino}.csv'
         if os.path.exists(file_path):
             bonos_df = pd.read_csv(file_path)
             # Ensure 'Bono' column exists

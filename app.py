@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import os
-import git
-from datetime import datetime
 
 # Configurar la página para que ocupe toda la pantalla horizontal
 st.set_page_config(layout="wide")
@@ -25,7 +23,7 @@ if not os.path.exists(folder_path):
 # Función para procesar los datos del archivo subido
 def procesar_archivo(archivo, ano, mes, casino):
     try:
-        df = pd.read_excel(archivo, header=6, names=column_names)
+        df = pd.read_excel(archivo, header=6)
     except FileNotFoundError:
         st.error("El archivo no se encontró.")
         return None
@@ -34,27 +32,21 @@ def procesar_archivo(archivo, ano, mes, casino):
         return None
     
     # Verificar si las columnas esperadas están presentes en el DataFrame
-    missing_columns = [col for col in column_names if col not in df.columns]
-    if missing_columns:
-        st.error(f"Las siguientes columnas faltan en el archivo: {', '.join(missing_columns)}")
+    if not set(column_names).issubset(df.columns):
+        st.error(f"Las siguientes columnas faltan en el archivo: {', '.join(set(column_names) - set(df.columns))}")
         st.write("Columnas disponibles en el archivo:", df.columns.tolist())
         return None
 
     # Filtrar y calcular el bono para cada fila
-    cliente_no_deseado = ['ROYAL', 'MNACO', 'FRON', 'MHTAN']
-    df = df[~df['Sala'].isin(cliente_no_deseado)]  # Excluir casinos no deseados
     df['Diferencia'] = df['HandPay'] - df['Billete']
     df['Bono'] = df.apply(lambda row: calcular_bono(row), axis=1)
-
-    # Filtrar por Billete > 20000 después del cálculo del bono
-    df = df[df['Billete'] > 20000]  
+    
+    # Agregar columna para marcar la entrega del bono (inicialmente False)
+    df['Entregado'] = False
     
     # Guardar el DataFrame procesado como archivo CSV
     file_path = f'{folder_path}/{ano}_{mes}_{casino}.csv'
     df.to_csv(file_path, index=False)
-    
-    # Subir el archivo a GitHub
-    subir_a_github(file_path)
     
     return df
 
@@ -74,18 +66,6 @@ def calcular_bono(row):
     except Exception as e:
         st.error(f"Error en fila {row.name}: {e}")
         return 0  # Retornar 0 en caso de error
-
-# Función para subir archivos a GitHub
-def subir_a_github(file_path):
-    try:
-        repo = git.Repo(os.getcwd())
-        repo.index.add([file_path])
-        repo.index.commit(f"Subiendo archivo {os.path.basename(file_path)} el {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        origin = repo.remote(name='origin')
-        origin.push()
-        st.success(f'Archivo {os.path.basename(file_path)} subido a GitHub exitosamente.')
-    except Exception as e:
-        st.error(f"Error al subir el archivo a GitHub: {e}")
 
 # Pantalla inicial con menú de opciones
 st.title('Sistema de Gestión de Bonos')
@@ -138,12 +118,15 @@ elif opcion == 'Ver Bonos Procesados':
             if 'Bono' in bonos_df.columns:
                 bonos_df = bonos_df[bonos_df['Bono'] > 0]  # Filtrar bonos positivos
                 
-                # Formatear los valores de la columna 'Bono'
-                bonos_df['Bono'] = bonos_df['Bono'].apply(lambda x: f"{x:,.0f}")
-                
                 # Mostrar la tabla de bonos con el formato deseado
                 st.subheader(f'Bonos para {ver_mes} {ver_ano} - {ver_casino}')
-                st.table(bonos_df[['Sala', 'Bono']])  # Usar st.table para mostrar la tabla completa
+                bonos_df['Entregado'] = bonos_df.apply(lambda row: st.checkbox(f'Entregar a {row["Sala"]}', row['Entregado']), axis=1)
+                st.table(bonos_df[['Sala', 'Bono', 'Entregado']])  # Usar st.table para mostrar la tabla completa
+                
+                # Guardar el DataFrame modificado de vuelta al archivo CSV al hacer clic en un botón
+                if st.button('Guardar cambios'):
+                    bonos_df.to_csv(file_path, index=False)
+                    st.success(f'Información de entrega guardada para {ver_mes} {ver_ano} - {ver_casino}.')
             else:
                 st.warning('No se encontraron bonos procesados para mostrar.')
         else:

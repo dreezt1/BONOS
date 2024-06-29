@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from io import BytesIO
 
 # Configurar la página para que ocupe toda la pantalla horizontal
 st.set_page_config(layout="wide")
@@ -26,7 +27,7 @@ def procesar_archivo(archivo, ano, mes, casino):
         df = pd.read_excel(archivo, header=6, names=column_names)
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
-        return None
+        return None, None
 
     # Filtrar y calcular el bono para cada fila
     cliente_no_deseado = ['ROYAL', 'MNACO', 'FRON', 'MHTAN']
@@ -84,6 +85,8 @@ if opcion == 'Cargar Archivo':
                 if bonos_df is not None and 'Bono' in bonos_df.columns:  # Ensure 'Bono' column exists
                     st.success(f'Archivo para {mes_subir} {ano_subir} - {casino_subir} procesado exitosamente.')
                     st.write(f'Archivo guardado en: {file_path}')
+                    
+                    # Proporcionar enlace de descarga del archivo procesado
                     with open(file_path, 'rb') as f:
                         st.download_button('Descargar archivo procesado', f, file_name=os.path.basename(file_path))
 
@@ -124,6 +127,3 @@ elif opcion == 'Ver Bonos Procesados':
                 st.warning('No se encontraron bonos procesados para mostrar.')
         else:
             st.warning(f'No se encontró el archivo {file_path}. Sube un archivo primero.')
-
-# Agregar control de versiones en la esquina inferior derecha
-st.sidebar.markdown("**Versión: v1.0**")

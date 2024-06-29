@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import os
-import git
-from datetime import datetime
 
 # Configurar la página para que ocupe toda la pantalla horizontal
 st.set_page_config(layout="wide")
@@ -26,18 +24,8 @@ if not os.path.exists(folder_path):
 def procesar_archivo(archivo, ano, mes, casino):
     try:
         df = pd.read_excel(archivo, header=6, names=column_names)
-    except FileNotFoundError:
-        st.error("El archivo no se encontró.")
-        return None
     except Exception as e:
         st.error(f"Error al leer el archivo: {e}")
-        return None
-    
-    # Verificar si las columnas esperadas están presentes en el DataFrame
-    missing_columns = [col for col in column_names if col not in df.columns]
-    if missing_columns:
-        st.error(f"Las siguientes columnas faltan en el archivo: {', '.join(missing_columns)}")
-        st.write("Columnas disponibles en el archivo:", df.columns.tolist())
         return None
 
     # Filtrar y calcular el bono para cada fila
@@ -50,11 +38,8 @@ def procesar_archivo(archivo, ano, mes, casino):
     df = df[df['Billete'] > 20000]  
     
     # Guardar el DataFrame procesado como archivo CSV
-    file_path = f'{folder_path}/{ano}_{mes}_{casino}.csv'
+    file_path = os.path.join(folder_path, f'{ano}_{mes}_{casino}.csv')
     df.to_csv(file_path, index=False)
-    
-    # Subir el archivo a GitHub
-    subir_a_github(file_path)
     
     return df
 
@@ -74,21 +59,6 @@ def calcular_bono(row):
     except Exception as e:
         st.error(f"Error en fila {row.name}: {e}")
         return 0  # Retornar 0 en caso de error
-
-# Función para subir archivos a GitHub
-def subir_a_github(file_path):
-    try:
-        repo = git.Repo(os.getcwd())
-        repo.index.add([file_path])
-        repo.index.commit(f"Subiendo archivo {os.path.basename(file_path)} el {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        # Use your personal access token (PAT) instead of the username and password
-        origin = repo.remote(name='origin')
-        origin.set_url(f"https://dreezt1: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@github.com/dreezt1/BONOS.git")
-        origin.push()
-        st.success(f'Archivo {os.path.basename(file_path)} subido a GitHub exitosamente.')
-    except Exception as e:
-        st.error(f"Error al subir el archivo a GitHub: {e}")
 
 # Pantalla inicial con menú de opciones
 st.title('Sistema de Gestión de Bonos')
@@ -134,7 +104,7 @@ elif opcion == 'Ver Bonos Procesados':
     ver_casino = st.selectbox('Seleccione el casino (Ver)', ['MANHATTAN', 'FARAON', 'ROYAL', 'MONACO'], key='ver_casino')
 
     if st.button('Ver Bonos'):
-        file_path = f'{folder_path}/{ver_ano}_{ver_mes}_{ver_casino}.csv'
+        file_path = os.path.join(folder_path, f'{ver_ano}_{ver_mes}_{ver_casino}.csv')
         if os.path.exists(file_path):
             bonos_df = pd.read_csv(file_path)
             # Ensure 'Bono' column exists

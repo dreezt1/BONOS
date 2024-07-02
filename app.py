@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import os
+import requests
+from io import BytesIO
 
 # Configurar la página para que ocupe toda la pantalla horizontal
 st.set_page_config(layout="wide")
@@ -70,6 +72,17 @@ def calcular_bono(row):
         st.error(f"Error en fila {row.name}: {e}")
         return 0  # Retornar 0 en caso de error
 
+# Función para obtener el archivo desde GitHub
+def obtener_archivo_desde_github(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        archivo = BytesIO(response.content)
+        return archivo
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error al obtener el archivo de GitHub: {e}")
+        return None
+
 # Pantalla inicial con menú de opciones
 st.title('Sistema de Gestión de Bonos')
 
@@ -87,12 +100,14 @@ if opcion == 'Cargar Archivo':
             ano_subir = st.selectbox('Seleccione el año (Subir)', range(2024, 2031), key='ano_subir')
             mes_subir = st.selectbox('Seleccione el mes (Subir)', ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'], key='mes_subir')
             casino_subir = st.selectbox('Seleccione el casino (Subir)', ['MANHATTAN', 'FARAON', 'ROYAL', 'MONACO'], key='casino_subir')
-            archivo = st.file_uploader(f"Cargar archivo Excel para {mes_subir} {ano_subir} - {casino_subir}", type=['xlsx'])
+            url_archivo = st.text_input(f"Ingrese la URL del archivo Excel en GitHub para {mes_subir} {ano_subir} - {casino_subir}")
 
-            if archivo is not None:
-                bonos_df = procesar_archivo(archivo, ano_subir, mes_subir, casino_subir)
-                if bonos_df is not None and 'Bono' in bonos_df.columns:  # Ensure 'Bono' column exists
-                    st.success(f'Archivo para {mes_subir} {ano_subir} - {casino_subir} procesado exitosamente.')
+            if url_archivo:
+                archivo = obtener_archivo_desde_github(url_archivo)
+                if archivo:
+                    bonos_df = procesar_archivo(archivo, ano_subir, mes_subir, casino_subir)
+                    if bonos_df is not None and 'Bono' in bonos_df.columns:  # Ensure 'Bono' column exists
+                        st.success(f'Archivo para {mes_subir} {ano_subir} - {casino_subir} procesado exitosamente.')
 
         elif submenu == 'Administrar Archivos':
             st.subheader('Administrar Archivos Cargados')

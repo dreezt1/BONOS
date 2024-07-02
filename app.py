@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import requests
 from io import BytesIO
+from github import Github
 
 # Configurar la página para que ocupe toda la pantalla horizontal
 st.set_page_config(layout="wide")
@@ -72,16 +73,18 @@ def calcular_bono(row):
         st.error(f"Error en fila {row.name}: {e}")
         return 0  # Retornar 0 en caso de error
 
-# Función para obtener el archivo desde GitHub
-def obtener_archivo_desde_github(url):
+# Función para subir archivo procesado a GitHub
+def subir_a_github(file_path, repository_name, github_token):
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        archivo = BytesIO(response.content)
-        return archivo
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error al obtener el archivo de GitHub: {e}")
-        return None
+        g = Github(github_token)
+        repo = g.get_user().get_repo(repository_name)
+        file_name = os.path.basename(file_path)
+        with open(file_path, 'r') as file:
+            content = file.read()
+            repo.create_file(file_name, f"committing {file_name}", content, branch="main")
+        st.success(f'Archivo {file_name} subido exitosamente a GitHub.')
+    except Exception as e:
+        st.error(f'Error al subir archivo a GitHub: {e}')
 
 # Pantalla inicial con menú de opciones
 st.title('Sistema de Gestión de Bonos')
@@ -100,14 +103,16 @@ if opcion == 'Cargar Archivo':
             ano_subir = st.selectbox('Seleccione el año (Subir)', range(2024, 2031), key='ano_subir')
             mes_subir = st.selectbox('Seleccione el mes (Subir)', ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'], key='mes_subir')
             casino_subir = st.selectbox('Seleccione el casino (Subir)', ['MANHATTAN', 'FARAON', 'ROYAL', 'MONACO'], key='casino_subir')
-            url_archivo = st.text_input(f"Ingrese la URL del archivo Excel en GitHub para {mes_subir} {ano_subir} - {casino_subir}")
+            archivo = st.file_uploader(f"Cargar archivo Excel para {mes_subir} {ano_subir} - {casino_subir}", type=['xlsx'])
 
-            if url_archivo:
-                archivo = obtener_archivo_desde_github(url_archivo)
-                if archivo:
+            if st.button('Procesar y Subir a GitHub'):
+                if archivo is not None:
                     bonos_df = procesar_archivo(archivo, ano_subir, mes_subir, casino_subir)
                     if bonos_df is not None and 'Bono' in bonos_df.columns:  # Ensure 'Bono' column exists
-                        st.success(f'Archivo para {mes_subir} {ano_subir} - {casino_subir} procesado exitosamente.')
+                        file_path = f'{folder_path}/{ano_subir}_{mes_subir}_{casino_subir}.csv'
+                        bonos_df.to_csv(file_path, index=False)
+                        github_token = st.secrets["github_token"]  # Obtener el token de GitHub desde los secrets de Streamlit
+                        subir_a_github(file_path, "nombre_repositorio", github_token)
 
         elif submenu == 'Administrar Archivos':
             st.subheader('Administrar Archivos Cargados')

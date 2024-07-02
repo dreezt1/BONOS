@@ -81,7 +81,7 @@ elif opcion == 'Ver Bonos Procesados':
 
             # Mostrar solo la columna 'Sala' y 'Bono' en formato de tabla de Excel
             bonos_df['Bono'] = bonos_df['Bono'].apply(lambda x: '{:,}'.format(x))
-            st.table(bonos_df[['Sala', 'Bono']].reset_index(drop=True))
+            st.table(bonos_df[['Sala', 'Bono']].reset_index(drop=True), height=600)
 
         except Exception as e:
             st.error(f"Error al cargar el archivo: {e}")
